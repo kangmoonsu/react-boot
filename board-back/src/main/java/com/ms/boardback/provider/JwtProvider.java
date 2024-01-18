@@ -17,22 +17,23 @@ public class JwtProvider {
     @Value("${secret-key}")
     private String secretKey;
 
-    public String create(String email){
+    public String create(String email) {
         Date expiredDate = Date.from(Instant.now().plus(1, ChronoUnit.HOURS));
 
         String jwt = Jwts.builder()
-            .signWith(SignatureAlgorithm.ES256, secretKey)
-            .setSubject(email).setIssuedAt(new Date()).setExpiration(expiredDate)
-            .compact();
-        return jwt;    
+                .signWith(SignatureAlgorithm.HS256, secretKey)
+                .setSubject(email).setIssuedAt(new Date()).setExpiration(expiredDate)
+                .compact();
+
+        return jwt;
     }
 
-    public String validate(String jwt){
+    public String validate(String jwt) {
         Claims claims = null;
 
         try {
             claims = Jwts.parser().setSigningKey(secretKey)
-                .parseClaimsJws(jwt).getBody();
+                    .parseClaimsJws(jwt).getBody();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
