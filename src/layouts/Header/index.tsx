@@ -34,6 +34,7 @@ export default function Header() {
 
     //          function: 네비게이트 함수            //
     const navigate = useNavigate();
+
     //          event handler : 로고 클릭 이벤트 처리 함수          //
     const onLogoClickHandler = () => {
         navigate(MAIN_PATH());
@@ -111,6 +112,7 @@ export default function Header() {
         //          event handler: 로그아웃 버튼 클릭 이벤트 처리 함수            //
         const onSignOutButtonClickHandler = () => {
             resetLoginUser();
+            setCookie('accessToken', '', { path: MAIN_PATH(), expires: new Date() });
             navigate(MAIN_PATH());
         };
         //          event handler: 로그인 버튼 클릭 이벤트 처리 함수            //
@@ -127,6 +129,7 @@ export default function Header() {
         //          render: 로그인 버튼 컴포넌트 렌더링            //
         return <div className='black-button' onClick={onSignInButtonClickHandler}>{'로그인'}</div>;
     };
+
     //          component: 업로드 버튼 컴포넌트               //
     const UploadButton = () => {
         //          state: 게시물 상태          //
@@ -158,6 +161,11 @@ export default function Header() {
         const isUserPage = pathname.startsWith(USER_PATH(''));
         setUserPage(isUserPage);
     }, [pathname]);
+    
+    //          effect: login user가 변경될 때 마다 실행될 함수           //
+    useEffect(() => {
+        setLogin(loginUser !== null);
+    }, [loginUser])
 
     //          render: 헤더 레이아웃 렌더링            //
     return (
