@@ -34,7 +34,7 @@ export const signInRequest = async (requestBody: SignInRequestDto) => {
 export const signUpRequest = async (requestBody: SignUpRequestDto) => {
     const result = await axios.post(SIGN_UP_URL(), requestBody)
         .then(response => {
-            const responseBody: SignUpResponseDto = response.data; 
+            const responseBody: SignUpResponseDto = response.data;
             return responseBody;
         })
         .catch(error => {
@@ -54,9 +54,27 @@ export const getSignInUserRequest = async (accessToken: string) => {
             return responseBody;
         })
         .catch(error => {
-            if(!error.response) return null;
+            if (!error.response) return null;
             const responseBody: ResponseDto = error.response.data;
             return responseBody;
         });
+    return result;
+}
+
+const FILE_DOMAIN = `${DOMAIN}/file`;
+
+const FILE_UPLOAD_URL = () => `${FILE_DOMAIN}/upload`;
+
+const multipartFormData = { headers: { 'Content-Type': 'multipart/form-data' } };
+
+export const fileUploadRequest = async (data: FormData) => {
+    const result = await axios.post(FILE_UPLOAD_URL(), data, multipartFormData)
+        .then(response => {
+            const responseBody: string = response.data;
+            return responseBody;
+        })
+        .catch(error => {
+            return null;
+        })
     return result;
 }

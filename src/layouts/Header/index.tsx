@@ -136,7 +136,7 @@ export default function Header() {
         const { title, content, boardImageFileList, resetBoard } = useBoardStore();
         //          event handler: 업로드 버튼 클릭 이벤트 처리 함수            // 
         const onUploadButtonClickHandler = () => {
-
+            
         }
         //          render: 업로드 버튼 컴포넌트 렌더링            //
         if (title && content)
