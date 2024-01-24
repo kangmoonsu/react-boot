@@ -15,13 +15,13 @@ import lombok.NoArgsConstructor;
 public class CommentListItem {
     private String nickname;
     private String profileImage;
-    private String writerDatetime;
+    private String writeDatetime;
     private String content;
 
     public CommentListItem(GetCommentListResultSet resultSet){
         this.nickname = resultSet.getNickname();
         this.profileImage = resultSet.getProfileImage();
-        this.writerDatetime = resultSet.getWriteDatetime();
+        this.writeDatetime = resultSet.getWriteDatetime();
         this.content = resultSet.getContent();
     }
 

@@ -2,6 +2,8 @@ package com.ms.boardback.repository;
 
 import java.util.List;
 
+import javax.transaction.Transactional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -27,4 +29,6 @@ public interface FavoriteRepository extends JpaRepository<FavoriteEntity, Favori
     )
     List<GetFavoriteListResultSet> getFavoriteList(Integer boardNumber);
 
+    @Transactional
+    void deleteByBoardNumber(Integer boardNumber);
 }

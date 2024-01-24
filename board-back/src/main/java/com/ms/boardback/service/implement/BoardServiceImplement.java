@@ -9,9 +9,11 @@ import org.springframework.stereotype.Service;
 import com.ms.boardback.dto.request.board.PostBoardRequestDto;
 import com.ms.boardback.dto.request.board.PostCommentRequestDto;
 import com.ms.boardback.dto.response.ResponseDto;
+import com.ms.boardback.dto.response.board.DeleteBoardResponseDto;
 import com.ms.boardback.dto.response.board.GetBoardResponseDto;
 import com.ms.boardback.dto.response.board.GetCommentListResponseDto;
 import com.ms.boardback.dto.response.board.GetFavoriteListResponseDto;
+import com.ms.boardback.dto.response.board.IncreaseViewCountResponseDto;
 import com.ms.boardback.dto.response.board.PostBoardResponseDto;
 import com.ms.boardback.dto.response.board.PostCommentResponseDto;
 import com.ms.boardback.dto.response.board.PutFavoriteResponseDto;
@@ -84,10 +86,6 @@ public class BoardServiceImplement implements BoardService {
                 return GetBoardResponseDto.noExistBoard();
 
             imageEntities = imageRepository.findByBoardNumber(boardNumber);
-
-            BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
-            boardEntity.increaseViewCount();
-            boardRepository.save(boardEntity);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -162,8 +160,7 @@ public class BoardServiceImplement implements BoardService {
                 return PostCommentResponseDto.noExistBoard();
 
             boolean existedUser = userRepository.existsByEmail(email);
-            if (!existedUser)
-                return PostCommentResponseDto.noExistUser();
+            if (!existedUser) return PostCommentResponseDto.noExistUser();
 
             CommentEntity commentEntity = new CommentEntity(dto, boardNumber, email);
             commentRepository.save(commentEntity);
@@ -197,6 +194,53 @@ public class BoardServiceImplement implements BoardService {
         }
 
         return GetCommentListResponseDto.success(resultSets);
+    }
+
+    @Override
+    public ResponseEntity<? super IncreaseViewCountResponseDto> increaseViewCount(Integer boardNumber) {
+        
+
+        try {
+            BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
+            if(boardEntity == null) return IncreaseViewCountResponseDto.noExistBoard();
+            boardEntity.increaseViewCount();
+            boardRepository.save(boardEntity);
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+        return IncreaseViewCountResponseDto.success();
+    }
+
+    @Override
+    public ResponseEntity<? super DeleteBoardResponseDto> deleteBoard(Integer boardNumber, String email) {
+        
+        try {
+            
+            boolean existedUser = userRepository.existsByEmail(email);
+            if (!existedUser) return DeleteBoardResponseDto.noExistUser();
+
+            BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
+            if(boardEntity == null) return DeleteBoardResponseDto.noExistBoard();
+
+            String writerEmail = boardEntity.getWriterEmail();
+            boolean isWriter = writerEmail.equals(email);
+            if (!isWriter) return DeleteBoardResponseDto.noPermission();
+
+            imageRepository.deleteByBoardNumber(boardNumber);
+            commentRepository.deleteByBoardNumber(boardNumber);
+            favoriteRepository.deleteByBoardNumber(boardNumber);
+
+            boardRepository.delete(boardEntity);
+
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return DeleteBoardResponseDto.success();
     }
 
 }
