@@ -2,10 +2,15 @@ package com.ms.boardback.service.implement;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import com.ms.boardback.dto.request.board.PatchBoardRequestDto;
 import com.ms.boardback.dto.request.board.PostBoardRequestDto;
 import com.ms.boardback.dto.request.board.PostCommentRequestDto;
 import com.ms.boardback.dto.response.ResponseDto;
@@ -13,14 +18,19 @@ import com.ms.boardback.dto.response.board.DeleteBoardResponseDto;
 import com.ms.boardback.dto.response.board.GetBoardResponseDto;
 import com.ms.boardback.dto.response.board.GetCommentListResponseDto;
 import com.ms.boardback.dto.response.board.GetFavoriteListResponseDto;
+import com.ms.boardback.dto.response.board.GetLatestBoardListResponseDto;
+import com.ms.boardback.dto.response.board.GetTop3BoardListResponseDto;
 import com.ms.boardback.dto.response.board.IncreaseViewCountResponseDto;
+import com.ms.boardback.dto.response.board.PatchBoardResponseDto;
 import com.ms.boardback.dto.response.board.PostBoardResponseDto;
 import com.ms.boardback.dto.response.board.PostCommentResponseDto;
 import com.ms.boardback.dto.response.board.PutFavoriteResponseDto;
 import com.ms.boardback.entity.BoardEntity;
+import com.ms.boardback.entity.BoardListViewEntity;
 import com.ms.boardback.entity.CommentEntity;
 import com.ms.boardback.entity.FavoriteEntity;
 import com.ms.boardback.entity.ImageEntity;
+import com.ms.boardback.repository.BoardListViewRepository;
 import com.ms.boardback.repository.BoardRepository;
 import com.ms.boardback.repository.CommentRepository;
 import com.ms.boardback.repository.FavoriteRepository;
@@ -42,6 +52,7 @@ public class BoardServiceImplement implements BoardService {
     private final ImageRepository imageRepository;
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
+    private final BoardListViewRepository boardListViewRepository;
 
     @Override
     public ResponseEntity<? super PostBoardResponseDto> postBoard(PostBoardRequestDto dto, String email) {
@@ -49,7 +60,7 @@ public class BoardServiceImplement implements BoardService {
 
             Boolean existedEmail = userRepository.existsByEmail(email);
             if (!existedEmail)
-                return PostBoardResponseDto.notExistUser();
+                return PostBoardResponseDto.noExistUser();
 
             BoardEntity board = new BoardEntity(dto, email);
             boardRepository.save(board);
@@ -151,7 +162,8 @@ public class BoardServiceImplement implements BoardService {
     }
 
     @Override
-    public ResponseEntity<? super PostCommentResponseDto> postComment(PostCommentRequestDto dto, Integer boardNumber, String email) {
+    public ResponseEntity<? super PostCommentResponseDto> postComment(PostCommentRequestDto dto, Integer boardNumber,
+            String email) {
 
         try {
 
@@ -160,11 +172,12 @@ public class BoardServiceImplement implements BoardService {
                 return PostCommentResponseDto.noExistBoard();
 
             boolean existedUser = userRepository.existsByEmail(email);
-            if (!existedUser) return PostCommentResponseDto.noExistUser();
+            if (!existedUser)
+                return PostCommentResponseDto.noExistUser();
 
             CommentEntity commentEntity = new CommentEntity(dto, boardNumber, email);
             commentRepository.save(commentEntity);
-            
+
             boardEntity.increaseCommentCount();
             boardRepository.save(boardEntity);
 
@@ -178,13 +191,14 @@ public class BoardServiceImplement implements BoardService {
 
     @Override
     public ResponseEntity<? super GetCommentListResponseDto> getCommentList(Integer boardNumber) {
-        
+
         List<GetCommentListResultSet> resultSets = new ArrayList<>();
 
         try {
-            
+
             boolean existedBoard = boardRepository.existsByBoardNumber(boardNumber);
-            if(!existedBoard) return GetCommentListResponseDto.noExistBoard();
+            if (!existedBoard)
+                return GetCommentListResponseDto.noExistBoard();
 
             resultSets = commentRepository.getCommentList(boardNumber);
 
@@ -198,14 +212,14 @@ public class BoardServiceImplement implements BoardService {
 
     @Override
     public ResponseEntity<? super IncreaseViewCountResponseDto> increaseViewCount(Integer boardNumber) {
-        
 
         try {
             BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
-            if(boardEntity == null) return IncreaseViewCountResponseDto.noExistBoard();
+            if (boardEntity == null)
+                return IncreaseViewCountResponseDto.noExistBoard();
             boardEntity.increaseViewCount();
             boardRepository.save(boardEntity);
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseDto.databaseError();
@@ -215,18 +229,21 @@ public class BoardServiceImplement implements BoardService {
 
     @Override
     public ResponseEntity<? super DeleteBoardResponseDto> deleteBoard(Integer boardNumber, String email) {
-        
+
         try {
-            
+
             boolean existedUser = userRepository.existsByEmail(email);
-            if (!existedUser) return DeleteBoardResponseDto.noExistUser();
+            if (!existedUser)
+                return DeleteBoardResponseDto.noExistUser();
 
             BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
-            if(boardEntity == null) return DeleteBoardResponseDto.noExistBoard();
+            if (boardEntity == null)
+                return DeleteBoardResponseDto.noExistBoard();
 
             String writerEmail = boardEntity.getWriterEmail();
             boolean isWriter = writerEmail.equals(email);
-            if (!isWriter) return DeleteBoardResponseDto.noPermission();
+            if (!isWriter)
+                return DeleteBoardResponseDto.noPermission();
 
             imageRepository.deleteByBoardNumber(boardNumber);
             commentRepository.deleteByBoardNumber(boardNumber);
@@ -234,13 +251,88 @@ public class BoardServiceImplement implements BoardService {
 
             boardRepository.delete(boardEntity);
 
-
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseDto.databaseError();
         }
 
         return DeleteBoardResponseDto.success();
+    }
+
+    @Override
+    public ResponseEntity<? super PatchBoardResponseDto> patchBoard(PatchBoardRequestDto dto, Integer boardNumber,
+            String email) {
+
+        try {
+
+            BoardEntity boardEntity = boardRepository.findByBoardNumber(boardNumber);
+            if (boardEntity == null)
+                return PatchBoardResponseDto.noExistBoard();
+
+            boolean existedUser = userRepository.existsByEmail(email);
+            if (!existedUser)
+                return PatchBoardResponseDto.noExistUser();
+
+            String writerEmail = boardEntity.getWriterEmail();
+            boolean isWriter = writerEmail.equals(email);
+            if (!isWriter)
+                return PatchBoardResponseDto.noPermission();
+
+            boardEntity.patchBoard(dto);
+            boardRepository.save(boardEntity);
+
+            imageRepository.deleteByBoardNumber(boardNumber);
+            List<String> boardImageList = dto.getBoardImageList();
+            List<ImageEntity> imageEntities = new ArrayList<>();
+            for (String image : boardImageList) {
+                ImageEntity imageEntity = new ImageEntity(boardNumber, image);
+                imageEntities.add(imageEntity);
+            }
+            imageRepository.saveAll(imageEntities);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return PatchBoardResponseDto.success();
+    }
+
+    @Override
+    public ResponseEntity<? super GetLatestBoardListResponseDto> getLatestBoardList() {
+
+        List<BoardListViewEntity> boardListViewEntities = new ArrayList<>();
+
+        try {
+
+            boardListViewEntities = boardListViewRepository.findByOrderByWriteDatetimeDesc();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return GetLatestBoardListResponseDto.success(boardListViewEntities);
+
+    }
+
+    @Override
+    public ResponseEntity<? super GetTop3BoardListResponseDto> getTop3BoardList() {
+
+        List<BoardListViewEntity> boardListViewEntities = new ArrayList<>();
+
+        try {
+            Date beforeWeek = Date.from(Instant.now().minus(7, ChronoUnit.DAYS));
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+            String sevenDaysAgo = simpleDateFormat.format(beforeWeek);
+            boardListViewEntities = boardListViewRepository.findTop3ByWriteDatetimeGreaterThanOrderByFavoriteCountDescCommentCountDescViewCountDescWriteDatetimeDesc(sevenDaysAgo);
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return GetTop3BoardListResponseDto.success(boardListViewEntities);
     }
 
 }
