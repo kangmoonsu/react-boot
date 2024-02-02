@@ -19,7 +19,9 @@ import com.ms.boardback.dto.response.board.GetBoardResponseDto;
 import com.ms.boardback.dto.response.board.GetCommentListResponseDto;
 import com.ms.boardback.dto.response.board.GetFavoriteListResponseDto;
 import com.ms.boardback.dto.response.board.GetLatestBoardListResponseDto;
+import com.ms.boardback.dto.response.board.GetSearchBoardListResponseDto;
 import com.ms.boardback.dto.response.board.GetTop3BoardListResponseDto;
+import com.ms.boardback.dto.response.board.GetUserBoardListResponseDto;
 import com.ms.boardback.dto.response.board.IncreaseViewCountResponseDto;
 import com.ms.boardback.dto.response.board.PatchBoardResponseDto;
 import com.ms.boardback.dto.response.board.PostBoardResponseDto;
@@ -30,11 +32,13 @@ import com.ms.boardback.entity.BoardListViewEntity;
 import com.ms.boardback.entity.CommentEntity;
 import com.ms.boardback.entity.FavoriteEntity;
 import com.ms.boardback.entity.ImageEntity;
+import com.ms.boardback.entity.SearchLogEntity;
 import com.ms.boardback.repository.BoardListViewRepository;
 import com.ms.boardback.repository.BoardRepository;
 import com.ms.boardback.repository.CommentRepository;
 import com.ms.boardback.repository.FavoriteRepository;
 import com.ms.boardback.repository.ImageRepository;
+import com.ms.boardback.repository.SearchLogRepository;
 import com.ms.boardback.repository.UserRepository;
 import com.ms.boardback.repository.resultSet.GetBoardResultSet;
 import com.ms.boardback.repository.resultSet.GetCommentListResultSet;
@@ -53,6 +57,7 @@ public class BoardServiceImplement implements BoardService {
     private final FavoriteRepository favoriteRepository;
     private final CommentRepository commentRepository;
     private final BoardListViewRepository boardListViewRepository;
+    private final SearchLogRepository searchLogRepository;
 
     @Override
     public ResponseEntity<? super PostBoardResponseDto> postBoard(PostBoardRequestDto dto, String email) {
@@ -325,7 +330,9 @@ public class BoardServiceImplement implements BoardService {
             Date beforeWeek = Date.from(Instant.now().minus(7, ChronoUnit.DAYS));
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
             String sevenDaysAgo = simpleDateFormat.format(beforeWeek);
-            boardListViewEntities = boardListViewRepository.findTop3ByWriteDatetimeGreaterThanOrderByFavoriteCountDescCommentCountDescViewCountDescWriteDatetimeDesc(sevenDaysAgo);
+            boardListViewEntities = boardListViewRepository
+                    .findTop3ByWriteDatetimeGreaterThanOrderByFavoriteCountDescCommentCountDescViewCountDescWriteDatetimeDesc(
+                            sevenDaysAgo);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -333,6 +340,51 @@ public class BoardServiceImplement implements BoardService {
         }
 
         return GetTop3BoardListResponseDto.success(boardListViewEntities);
+    }
+
+    @Override
+    public ResponseEntity<? super GetSearchBoardListResponseDto> getSearchBoardList(String searchWord,
+            String preSearchWord) {
+
+        List<BoardListViewEntity> boardListViewEntities = new ArrayList<>();
+
+        try {
+
+            boardListViewEntities = boardListViewRepository
+                    .findByTitleContainsOrContentContainsOrderByWriteDatetimeDesc(searchWord, searchWord);
+
+            SearchLogEntity searchLogEntity = new SearchLogEntity(searchWord, preSearchWord, false);
+            searchLogRepository.save(searchLogEntity);
+
+            boolean relation = preSearchWord != null;
+            if (relation) {
+                searchLogEntity = new SearchLogEntity(preSearchWord, searchWord, relation);
+                searchLogRepository.save(searchLogEntity);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+
+        return GetSearchBoardListResponseDto.success(boardListViewEntities);
+    }
+
+    @Override
+    public ResponseEntity<? super GetUserBoardListResponseDto> getUserBoardList(String email) {
+
+        List<BoardListViewEntity> boardListViewEntities = new ArrayList<>();
+
+        try {
+            boolean existedUser = userRepository.existsByEmail(email);
+            if (!existedUser) return GetUserBoardListResponseDto.noExistUser();
+            boardListViewEntities = boardListViewRepository.findByWriterEmailOrderByWriteDatetimeDesc(email);
+                
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseDto.databaseError();
+        }
+        return GetUserBoardListResponseDto.success(boardListViewEntities);
     }
 
 }
